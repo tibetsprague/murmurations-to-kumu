@@ -37,6 +37,9 @@ const searchMurmurationsAPI = async (primaryUrl, index = 'test') => {
 export default async function handler(req, res) {
   const { url, index } = req.query;
 
+  // For CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
   if (!url) {
     return res.status(400).json({ error: 'Missing `url` query parameter' });
   }

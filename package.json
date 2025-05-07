@@ -4,8 +4,6 @@
   "description": "A simple API to convert data from a URL to KUMU JSON format",
   "main": "api/parse.js",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "vercel dev",
     "deploy": "vercel deploy"
   },
   "type": "module",
