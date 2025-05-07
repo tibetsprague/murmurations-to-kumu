@@ -19,14 +19,14 @@ const convertMurmurationsProfileToKumuElement = (profile) => ({
   url: profile.primary_url
 });
 
-const searchMurmurationsAPI = async (primaryUrl) => {
+const searchMurmurationsAPI = async (primaryUrl, index = 'test') => {
   primaryUrl = primaryUrl.replace(/^https?:\/\//, '');
   const queryParams = new URLSearchParams({
     primary_url: primaryUrl,
     schema: 'organizations_schema-v1.0.0'
   }).toString();
 
-  const apiUrl = `https://index.murmurations.network/v2/nodes?${queryParams}`;
+  const apiUrl = `https://${index === 'test' ? 'test-' : ''}index.murmurations.network/v2/nodes?${queryParams}`;
   const response = await fetch(apiUrl);
   if (!response.ok) {
     throw new Error(`Failed to query Murmurations API for ${primaryUrl}`);
@@ -35,7 +35,7 @@ const searchMurmurationsAPI = async (primaryUrl) => {
 };
 
 export default async function handler(req, res) {
-  const { url } = req.query;
+  const { url, index } = req.query;
 
   if (!url) {
     return res.status(400).json({ error: 'Missing `url` query parameter' });
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
     for (const relUrl of relationshipUrls) {
       try {
-        const nodesData = await searchMurmurationsAPI(relUrl);
+        const nodesData = await searchMurmurationsAPI(relUrl, index || 'test');
         const node = nodesData.data?.[0];
         if (!node) continue;
 
