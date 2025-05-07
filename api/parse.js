@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       }));
 
     const kumuMap = {
-      nodes: murmurationsElements,
+      elements: murmurationsElements,
       connections,
       loops: []
     }
