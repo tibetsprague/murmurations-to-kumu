@@ -20,6 +20,8 @@ const convertMurmurationsProfileToKumuElement = (profile) => ({
 });
 
 const searchMurmurationsAPI = async (primaryUrl, index = 'test') => {
+  console.log('Searching Murmurations API for', primaryUrl, index);
+
   primaryUrl = primaryUrl.replace(/^https?:\/\//, '');
   const queryParams = new URLSearchParams({
     primary_url: primaryUrl,
