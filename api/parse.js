@@ -19,10 +19,15 @@ const convertMurmurationsProfileToKumuElement = (profile) => ({
   url: profile.primary_url
 });
 
-const searchMurmurationsAPI = async (primaryUrl, index = 'test') => {
-  console.log('Searching Murmurations API for', primaryUrl, index);
+const cleanupPrimaryUrl = (primaryUrl) => {
+  // Remove possible http(s)://www. from the primary_url, and strip any trailing slashes
+  return primaryUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+}
 
-  primaryUrl = primaryUrl.replace(/^https?:\/\//, '');
+const searchMurmurationsAPI = async (primaryUrl, index = 'test') => {
+  primaryUrl = cleanupPrimaryUrl(primaryUrl);
+
+  console.log(`\n\nSearching Murmurations ${index} API for primary URL = ${primaryUrl}`);
   const queryParams = new URLSearchParams({
     primary_url: primaryUrl,
     schema: 'organizations_schema-v1.0.0'
@@ -33,7 +38,13 @@ const searchMurmurationsAPI = async (primaryUrl, index = 'test') => {
   if (!response.ok) {
     throw new Error(`Failed to query Murmurations API for ${primaryUrl}`);
   }
-  return response.json();
+
+  const nodesData = await response.json();
+  const activeNodes = nodesData.data?.filter(n => n.status !== 'deleted');
+  // If there are multiple nodes with the same primary_url, use the one where the profile_url matches the primaryUrl
+  let node = activeNodes.find(n => n.profile_url.includes(primaryUrl)) || activeNodes?.[0];
+  console.log('Found murmurations profile: ', node);
+  return node;
 };
 
 export default async function handler(req, res) {
@@ -48,24 +59,20 @@ export default async function handler(req, res) {
 
   try {
     const murmurationsData = await getDataFromUrl(url);
-    // Remove possible http(s)://www. from the primary_url
-    const primaryUrl = murmurationsData.primary_url.replace(/^https?:\/\/(www\.)?/, '');
+    const primaryUrl = cleanupPrimaryUrl(murmurationsData.primary_url);
     const relationshipUrls = murmurationsData.relationships?.map(rel => rel.object_url) || [];
 
     const murmurationsElements = [convertMurmurationsProfileToKumuElement(murmurationsData)];
 
     for (const relUrl of relationshipUrls) {
       try {
-        const nodesData = await searchMurmurationsAPI(relUrl, index || 'test');
-        const activeNodes = nodesData.data?.filter(n => n.status !== 'deleted');
-        // If there are multiple nodes with the same primary_url, use the one where the profile_url matches the primaryUrl
-        let node = activeNodes.find(n => n.profile_url.includes(primaryUrl)) || activeNodes?.[0];
+        const node = await searchMurmurationsAPI(relUrl, index || 'test');
         if (!node) continue;
 
         const profileData = await getDataFromUrl(node.profile_url);
-        const hasRelationshipToCTA = profileData?.relationships?.some(r => r.object_url.includes(primaryUrl));
+        const hasRelationshipToPrimaryProfile = profileData?.relationships?.some(r => r.object_url.includes(primaryUrl));
 
-        if (hasRelationshipToCTA) {
+        if (hasRelationshipToPrimaryProfile) {
           murmurationsElements.push(convertMurmurationsProfileToKumuElement(profileData));
         }
       } catch (e) {
