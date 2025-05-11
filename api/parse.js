@@ -48,6 +48,8 @@ export default async function handler(req, res) {
 
   try {
     const murmurationsData = await getDataFromUrl(url);
+    // Remove possible http(s)://www. from the primary_url
+    const primaryUrl = murmurationsData.primary_url.replace(/^https?:\/\/(www\.)?/, '');
     const relationshipUrls = murmurationsData.relationships?.map(rel => rel.object_url) || [];
 
     const murmurationsElements = [convertMurmurationsProfileToKumuElement(murmurationsData)];
@@ -55,11 +57,13 @@ export default async function handler(req, res) {
     for (const relUrl of relationshipUrls) {
       try {
         const nodesData = await searchMurmurationsAPI(relUrl, index || 'test');
-        const node = nodesData.data?.[0];
+        const activeNodes = nodesData.data?.filter(n => n.status !== 'deleted');
+        // If there are multiple nodes with the same primary_url, use the one where the profile_url matches the primaryUrl
+        let node = activeNodes.find(n => n.profile_url.includes(primaryUrl)) || activeNodes?.[0];
         if (!node) continue;
 
         const profileData = await getDataFromUrl(node.profile_url);
-        const hasRelationshipToCTA = profileData?.relationships?.some(r => r.object_url.includes('collaborative.tech'));
+        const hasRelationshipToCTA = profileData?.relationships?.some(r => r.object_url.includes(primaryUrl));
 
         if (hasRelationshipToCTA) {
           murmurationsElements.push(convertMurmurationsProfileToKumuElement(profileData));
